@@ -258,6 +258,14 @@
 
             reset();
         }
+        // 检查浏览器是否支持离线缓存
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('离线功能已就绪！', reg))
+                    .catch(err => console.log('离线功能启动失败', err));
+            });
+        }
     </script>
 </body>
 </html>
