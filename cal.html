@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="小明预算">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5111/5111166.png">
+    
+    <title>小明预算计算器</title>
+    <style>
+        :root {
+            --bg-color: #F2F2F7;
+            --card-bg: #ffffff;
+            --accent: #5856D6;
+            --text: #1C1C1E;
+            --gray: #8E8E93;
+        }
+
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 50px 20px 15px;
+            background: var(--card-bg);
+            text-align: center;
+            box-shadow: 0 1px 10px rgba(0,0,0,0.05);
+            z-index: 10;
+        }
+
+        .total-label { font-size: 12px; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; }
+        .total-amount { font-size: 34px; font-weight: 700; color: var(--accent); margin-top: 5px; }
+
+        .history-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            background: #F9F9F9;
+        }
+
+        .log-item {
+            padding: 12px 15px;
+            border-radius: 10px;
+            font-size: 15px;
+            color: #777;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .log-item.budget-item {
+            background: #EFEEFF;
+            color: var(--accent);
+            font-weight: 600;
+            border-left: 5px solid var(--accent);
+        }
+
+        .log-expr { flex: 1; margin-right: 10px; word-break: break-all; }
+        .log-res { white-space: nowrap; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .input-display {
+            padding: 15px 25px;
+            text-align: right;
+            background: white;
+            border-top: 1px solid #eee;
+        }
+
+        #display { font-size: 44px; font-weight: 300; color: var(--text); min-height: 54px; }
+        #expr-display { font-size: 14px; color: var(--gray); height: 18px; margin-bottom: 4px; overflow: hidden; }
+
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            padding: 15px 15px 35px;
+            background: white;
+        }
+
+        button {
+            height: 62px;
+            border-radius: 16px;
+            border: none;
+            font-size: 22px;
+            font-weight: 500;
+            background: var(--bg-color);
+            color: var(--text);
+            transition: transform 0.05s, background 0.1s;
+        }
+
+        button:active { transform: scale(0.92); background: #E5E5EA; }
+
+        .btn-op { background: #F2F2F7; color: var(--accent); }
+        .btn-add { 
+            grid-column: span 2; 
+            background: var(--accent); 
+            color: white; 
+            font-size: 17px;
+            font-weight: 600;
+        }
+        .btn-clear { color: #FF3B30; }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="total-label">清单总预算</div>
+        <div class="total-amount">¥ <span id="total-val">0.00</span></div>
+    </div>
+
+    <div class="history-container" id="history-box"></div>
+
+    <div class="input-display">
+        <div id="expr-display"></div>
+        <div id="display">0</div>
+    </div>
+
+    <div class="keypad">
+        <button class="btn-clear" onclick="reset()">AC</button>
+        <button class="btn-op" onclick="press('/')">÷</button>
+        <button class="btn-op" onclick="press('*')">×</button>
+        <button onclick="backspace()">⌫</button>
+
+        <button onclick="press('7')">7</button>
+        <button onclick="press('8')">8</button>
+        <button onclick="press('9')">9</button>
+        <button class="btn-op" onclick="press('-')">-</button>
+
+        <button onclick="press('4')">4</button>
+        <button onclick="press('5')">5</button>
+        <button onclick="press('6')">6</button>
+        <button class="btn-op" onclick="press('+')">+</button>
+
+        <button onclick="press('1')">1</button>
+        <button onclick="press('2')">2</button>
+        <button onclick="press('3')">3</button>
+        <button class="btn-op" onclick="solve(true)">=</button>
+
+        <button onclick="press('0')">0</button>
+        <button onclick="press('.')">.</button>
+        <button class="btn-add" onclick="addToBudget()">加入预算清单</button>
+    </div>
+
+    <script>
+        let currentInput = "";
+        let totalBudget = 0;
+        let isFinished = false; // 新增：标记是否刚完成一次计算
+        
+        const historyBox = document.getElementById('history-box');
+        const displayEl = document.getElementById('display');
+        const exprEl = document.getElementById('expr-display');
+
+        function press(key) {
+            const isOperator = ['+', '-', '*', '/'].includes(key);
+            
+            // 核心修复逻辑：
+            if (isFinished) {
+                if (!isOperator) {
+                    // 如果刚算完结果，按下的是数字，则清空重新开始
+                    currentInput = "";
+                }
+                // 如果按下的是运算符，则保留结果继续计算
+                isFinished = false;
+            }
+
+            if (currentInput === "0" && !isNaN(key)) currentInput = "";
+            currentInput += key;
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            displayEl.innerText = currentInput || "0";
+            exprEl.innerText = currentInput;
+        }
+
+        function reset() {
+            currentInput = "";
+            isFinished = false;
+            exprEl.innerText = "";
+            displayEl.innerText = "0";
+        }
+
+        function backspace() {
+            if(isFinished) return; // 结果状态下不允许退格
+            currentInput = currentInput.slice(0, -1);
+            updateDisplay();
+        }
+
+        function solve(isManualEqual = false) {
+            if (!currentInput) return;
+            try {
+                let expression = currentInput;
+                // 替换显示符号为运算符号
+                let safeExpr = currentInput.replace(/×/g, '*').replace(/÷/g, '/');
+                let result = eval(safeExpr);
+                
+                // 格式化结果，避免小数点太长
+                if (result % 1 !== 0) result = parseFloat(result.toFixed(8));
+
+                if (isManualEqual) {
+                    // 只有点等号时，才记录普通历史，并开启“结束状态”
+                    if (expression !== String(result)) {
+                        addLogItem(`${expression} =`, `${result}`, false);
+                    }
+                    isFinished = true; 
+                }
+
+                currentInput = String(result);
+                displayEl.innerText = result;
+                return result;
+            } catch {
+                displayEl.innerText = "错误";
+                return null;
+            }
+        }
+
+        function addLogItem(left, right, isBudget = false) {
+            const div = document.createElement('div');
+            div.className = isBudget ? 'log-item budget-item' : 'log-item';
+            div.innerHTML = `<span class="log-expr">${left}</span><span class="log-res">${right}</span>`;
+            historyBox.appendChild(div);
+            historyBox.scrollTop = historyBox.scrollHeight;
+        }
+
+        function addToBudget() {
+            let expression = currentInput;
+            if(!expression || expression === "0") return;
+
+            let result = solve(false); 
+            if(result === null) return;
+            
+            let val = parseFloat(result);
+            totalBudget += val;
+            document.getElementById('total-val').innerText = totalBudget.toFixed(2);
+
+            // 加入预算时，如果刚才已经算过结果了(isFinished)，就显示结果，否则显示过程
+            let displayExpr = (isFinished) ? "入账" : expression;
+            addLogItem(`${displayExpr} =`, `+ ¥${val.toFixed(2)}`, true);
+
+            reset();
+        }
+    </script>
+</body>
+</html>
