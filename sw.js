@@ -1,4 +1,4 @@
-const CACHE_NAME = 'icalc-v2';
+const CACHE_NAME = 'icalc-v3';
 const assets = [
   './',
   './index.html',
