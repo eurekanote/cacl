@@ -170,20 +170,35 @@
         const exprEl = document.getElementById('expr-display');
 
         function press(key) {
-            const isOperator = ['+', '-', '*', '/'].includes(key);
-            
-            // 核心修复逻辑：
+            const operators = ['+', '-', '*', '/'];
+            const lastChar = currentInput.slice(-1); // 获取最后一个字符
+
+            // 如果刚算完结果 (isFinished 为 true)
             if (isFinished) {
-                if (!isOperator) {
-                    // 如果刚算完结果，按下的是数字，则清空重新开始
-                    currentInput = "";
+                if (!operators.includes(key)) {
+                    currentInput = ""; // 如果按的是数字，清空重新开始
                 }
-                // 如果按下的是运算符，则保留结果继续计算
-                isFinished = false;
+                isFinished = false; // 重置状态
             }
 
-            if (currentInput === "0" && !isNaN(key)) currentInput = "";
-            currentInput += key;
+            // 逻辑处理：防止连续输入两个运算符
+            if (operators.includes(key)) {
+                if (currentInput === "" || currentInput === "0") {
+                    // 如果开头就按运算符，只有负号 "-" 是允许的
+                    if (key === '-') currentInput = "-"; 
+                    else return; 
+                } else if (operators.includes(lastChar)) {
+                    // 如果最后一位已经是运算符，直接替换成新的运算符
+                    currentInput = currentInput.slice(0, -1) + key;
+                } else {
+                    currentInput += key;
+                }
+            } else {
+                // 如果输入的是数字
+                if (currentInput === "0") currentInput = "";
+                currentInput += key;
+            }
+            
             updateDisplay();
         }
 
@@ -207,24 +222,31 @@
 
         function solve(isManualEqual = false) {
             if (!currentInput) return;
+            
+            // 自动修正：如果末尾是运算符（如 "5+"），计算前先去掉它
+            let expression = currentInput;
+            const operators = ['+', '-', '*', '/'];
+            while (operators.includes(expression.slice(-1))) {
+                expression = expression.slice(0, -1);
+            }
+
             try {
-                let expression = currentInput;
-                // 替换显示符号为运算符号
-                let safeExpr = currentInput.replace(/×/g, '*').replace(/÷/g, '/');
+                let safeExpr = expression.replace(/×/g, '*').replace(/÷/g, '/');
                 let result = eval(safeExpr);
                 
-                // 格式化结果，避免小数点太长
                 if (result % 1 !== 0) result = parseFloat(result.toFixed(8));
 
                 if (isManualEqual) {
-                    // 只有点等号时，才记录普通历史，并开启“结束状态”
+                    // 只有当有实际运算过程时才记录（防止点两遍等号重复记录）
                     if (expression !== String(result)) {
                         addLogItem(`${expression} =`, `${result}`, false);
+                        currentInput = String(result); // 更新结果
                     }
                     isFinished = true; 
+                } else {
+                    currentInput = String(result);
                 }
 
-                currentInput = String(result);
                 displayEl.innerText = result;
                 return result;
             } catch {
