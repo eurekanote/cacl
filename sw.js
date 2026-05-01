@@ -2,7 +2,7 @@ const CACHE_NAME = 'xiaoming-calc-v1';
 const assets = [
   './',
   './index.html',
-  'https://cdn-icons-png.flaticon.com/512/10051/10051390.png'
+  'https://cdn-icons-png.flaticon.com/128/891/891175.png'
 ];
 
 // 安装时缓存所有资源
