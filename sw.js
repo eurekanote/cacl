@@ -1,4 +1,4 @@
-const CACHE_NAME = 'xiaoming-calc-v1';
+const CACHE_NAME = 'icalc-v2';
 const assets = [
   './',
   './index.html',
