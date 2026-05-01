@@ -54,10 +54,10 @@
         .log-item {
             padding: 12px 15px;
             border-radius: 10px;
-            font-size: 15px;
+            font-size: 18px;
             color: #777;
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-end; /* 靠右对齐：关键修改 */
             align-items: center;
             animation: fadeIn 0.3s ease;
         }
@@ -66,10 +66,11 @@
             background: #EFEEFF;
             color: var(--accent);
             font-weight: 600;
-            border-left: 5px solid var(--accent);
+            border-right: 5px solid var(--accent); /* 边框移到右边，配合右对齐更美观 */
+            border-left: none; /* 确保去掉之前的左边框 */
         }
 
-        .log-expr { flex: 1; margin-right: 10px; word-break: break-all; }
+        .log-expr { margin-right: 10px; word-break: break-all; }
         .log-res { white-space: nowrap; }
 
         @keyframes fadeIn {
